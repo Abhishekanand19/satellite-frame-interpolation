@@ -54,4 +54,5 @@ dashboard/frontend/.env.production.local
 # 5. OS SPECIFIC TRASH
 # ==========================================
 .DS_Store
-Thumbs.db
+Thumbs.dboutputs/
+runs/
