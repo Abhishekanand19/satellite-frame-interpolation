@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environments
+venv/
+env/
+.env
+
+# VS Code
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data
+data/
+
+# Models
+models/checkpoints/
+models/pretrained/
+
+# Outputs
+outputs/
+
+# Large files
+*.nc
+*.h5
+*.pt
+*.pth
+*.ckpt
+
+# Logs
+*.log
