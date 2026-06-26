@@ -56,3 +56,5 @@ dashboard/frontend/.env.production.local
 .DS_Store
 Thumbs.dboutputs/
 runs/
+outputs/
+runs/
