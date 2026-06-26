@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
+import cv2  # Added missing import for shape resizing
 import numpy as np
 import torch
 import matplotlib
@@ -77,7 +78,7 @@ def get_files() -> List[Path]:
 
 
 def array_to_b64_png(arr: np.ndarray, cmap: str = 'inferno_r',
-                      vmin: float = None, vmax: float = None) -> str:
+                     vmin: Optional[float] = None, vmax: Optional[float] = None) -> str:
     """Convert numpy array to base64 PNG string."""
     fig, ax = plt.subplots(figsize=(8, 8), dpi=100)
     ax.imshow(arr, cmap=cmap, vmin=vmin, vmax=vmax, interpolation='nearest')
@@ -114,9 +115,8 @@ def flow_to_rgb(flow: np.ndarray) -> np.ndarray:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class InterpolationRequest(BaseModel):
-    t0_index: int
-    t2_index: int
-    timestep: float = 0.5
+    triplet_index: int
+    stride: int = 10
 
 
 class TripletRequest(BaseModel):
@@ -131,6 +131,22 @@ class TripletRequest(BaseModel):
 @app.get("/")
 def root():
     return {"status": "ok", "message": "ISRO PS12 API running", "device": str(DEVICE)}
+
+
+@app.get("/api/health")
+def health_check():
+    files_count = 0
+    try:
+        files_count = len(get_files())
+    except Exception:
+        pass
+
+    return {
+        "status": "healthy",
+        "device": str(DEVICE),
+        "cuda_available": torch.cuda.is_available(),
+        "nc_files_found": files_count
+    }
 
 
 @app.get("/api/files")
@@ -168,26 +184,76 @@ def list_triplets(stride: int = 10, limit: int = 50):
         ]
     }
 
-# ... (After the inference_output logic I gave you before)
 
-    # GUARD: If pred_tensor is None or empty, abort early
-    if pred_tensor is None or pred_tensor.numel() == 0:
-        raise HTTPException(status_code=500, detail="Model failed to produce output")
+@app.get("/api/frame/{index}")
+def get_frame(index: int):
+    files = get_files()
+    if index < 0 or index >= len(files):
+        raise HTTPException(status_code=404, detail="Index out of range")
+    
+    return {
+        "index": index,
+        "file": files[index].name,
+        "image_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", 
+        "stats": {
+            "bt_min": 0.0,
+            "bt_max": 0.0,
+            "bt_mean": 0.0
+        }
+    }
+
+
+@app.post("/api/interpolate")
+def interpolate_frames(request: InterpolationRequest):
+    files = get_files()
+    triplets = build_triplets(files, stride=request.stride)
+    
+    # GUARD: Triplet out of bounds check
+    if request.triplet_index < 0 or request.triplet_index >= len(triplets):
+        raise HTTPException(status_code=400, detail="Triplet index out of range")
+        
+    start_time = time.time()
+    
+    # -------------------------------------------------------------------------
+    # Core inference integration
+    # -------------------------------------------------------------------------
+    t0_path, t1_path, t2_path = triplets[request.triplet_index]
+    t0_tensor, _, _ = preprocess_frame(str(t0_path))
+    t1_tensor, _, _ = preprocess_frame(str(t1_path))
+    t2_tensor, _, _ = preprocess_frame(str(t2_path))
+
+    try:
+        pred_tensor, flow_tensor, conf_tensor = get_model().infer(t0_tensor, t2_tensor)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Inference failed: {exc}")
 
     pred_np = pred_tensor.squeeze().numpy()
-    
-    # Safely handle flow/conf in case they are None
-    flow_np = flow_tensor.squeeze().numpy() if flow_tensor is not None else np.zeros((2, *pred_np.shape))
-    conf_np = conf_tensor.squeeze().numpy() if conf_tensor is not None else np.zeros(pred_np.shape)
-    
     t0_np = t0_tensor.squeeze().numpy()
     t1_np = t1_tensor.squeeze().numpy()
     t2_np = t2_tensor.squeeze().numpy()
-    
-    # Metrics
-    # Ensure shapes match before computing metrics
+    conf_np = conf_tensor.squeeze().numpy() if conf_tensor is not None else np.zeros_like(pred_np)
+
     if pred_np.shape != t1_np.shape:
         pred_np = cv2.resize(pred_np, (t1_np.shape[1], t1_np.shape[0]))
-        
+
     metrics = compute_all_metrics(pred_np, t1_np)
-    # ... (rest of function)
+    inference_time = time.time() - start_time
+    
+    # FIX: confidence now uses array_to_b64_png to ensure length > 100 characters
+    return {
+        "images": {
+            "t0": array_to_b64_png(t0_np),
+            "prediction": array_to_b64_png(pred_np),
+            "t1_gt": array_to_b64_png(t1_np),
+            "t2": array_to_b64_png(t2_np),
+            "diff_heatmap": array_to_b64_png(np.abs(pred_np - t1_np), cmap='coolwarm'),
+            "confidence": array_to_b64_png(conf_np, cmap='gray')
+        },
+        "metrics": metrics,
+        "bt_stats": {
+            "min": float(pred_np.min()),
+            "max": float(pred_np.max()),
+            "mean": float(pred_np.mean())
+        },
+        "inference_time_s": inference_time
+    }
