@@ -1,0 +1,16 @@
+# .dockerignore
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.github/
+tests/
+notebooks/
+*.egg-info/
+.env
+nohup.out
+data/goes19/raw/*.nc
+runs/
+outputs/
+reports/
+benchmarks/results/
