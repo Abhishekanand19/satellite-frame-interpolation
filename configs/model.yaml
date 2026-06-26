@@ -1,0 +1,14 @@
+# configs/model.yaml
+model:
+  name: ThermalIFNet
+  in_channels: 1         # single-channel thermal
+  timestep: 0.5
+
+architecture:
+  block_channels: [192, 128, 96, 64]
+  refine_channels: 32
+  scales: [8, 4, 2, 1]
+
+inference:
+  pad_multiple: 32       # pad input dims to multiple of this
+  amp: true
