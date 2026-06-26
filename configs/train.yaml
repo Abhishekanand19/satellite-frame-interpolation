@@ -1,0 +1,36 @@
+# configs/train.yaml
+training:
+  epochs: 100
+  batch_size: 4
+  num_workers: 4
+  seed: 42
+  amp: true
+  grad_clip: 1.0
+  val_ratio: 0.10
+  train_ratio: 0.80
+  save_every: 10
+  early_stop_patience: 15
+  early_stop_delta: 1.0e-5
+
+optimizer:
+  type: adamw
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  type: cosine          # cosine | step | plateau
+  eta_min: 1.0e-7
+  step_size: 20
+  gamma: 0.5
+
+loss:
+  alpha: 0.84           # weight for SSIM vs Charbonnier
+  eps: 1.0e-6
+
+paths:
+  checkpoint_dir: models/checkpoints
+  log_dir: runs/thermal_ifnet
+  output_dir: outputs
+
+resume: null            # set to checkpoint path to resume
