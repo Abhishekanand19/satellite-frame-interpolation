@@ -58,3 +58,4 @@ Thumbs.dboutputs/
 runs/
 outputs/
 runs/
+.coverage
