@@ -59,3 +59,4 @@ runs/
 outputs/
 runs/
 .coverage
+.env
