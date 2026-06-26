@@ -1,4 +1,3 @@
-# src/interpolation/trainer.py
 """
 Production trainer for ThermalIFNet — dataset-agnostic temporal interpolation.
 Supports GOES now; INSAT later via config/dataloader swap only.
@@ -9,6 +8,8 @@ import os
 import random
 import sys
 import time
+import argparse
+import yaml
 from pathlib import Path
 from typing import Optional
 
@@ -27,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 from src.data_loader.goes_dataset import GOESTripletDataset, build_triplets, discover_nc_files
 from src.interpolation.rife_model import RIFEThermalInterpolator, DEVICE
 from src.physics_metrics.metrics import compute_all_metrics
+from src.config.config_loader import load_config
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -437,26 +439,46 @@ class Trainer:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    cfg = TrainerConfig(
-        data_root       = "data/goes19/raw",
-        stride          = 10,
-        target_size     = (512, 512),
-        epochs          = 100,
-        batch_size      = 4,
-        num_workers     = 4,
-        amp             = True,
-        lr              = 1e-4,
-        scheduler       = "cosine",
-        loss_alpha      = 0.84,
-        checkpoint_dir  = "models/checkpoints",
-        log_dir         = "runs/thermal_ifnet",
-        save_every      = 10,
-        early_stop_patience = 15,
-        seed            = 42,
-        # resume        = "models/checkpoints/best_model.pth",  # uncomment to resume
-        # max_triplets  = 500,                                   # uncomment to cap dataset
+    p = argparse.ArgumentParser()
+    p.add_argument("--set", nargs="*", help="key=value overrides (e.g., --set dataset=insat train.batch_size=8)")
+    args = p.parse_args()
+
+    # Process command line overrides dynamically
+    overrides = {}
+    for kv in (args.set or []):
+        if "=" in kv:
+            k, v = kv.split("=", 1)
+            if "." in k:
+                parent, child = k.split(".", 1)
+                if parent not in overrides:
+                    overrides[parent] = {}
+                overrides[parent][child] = yaml.safe_load(v)
+            else:
+                overrides[k] = yaml.safe_load(v)
+
+    # Load the unified config object from the YAML files
+    cfg = load_config(overrides=overrides)
+
+    try:
+        dataset_name = cfg.dataset.name.upper()
+    except AttributeError:
+        dataset_name = "GOES (Default)"
+        
+    logger.info(f"--- Initializing Trainer for dataset tier: {dataset_name} ---")
+
+    # Pass the loaded YAML configurations directly into the TrainerConfig object
+    # If a variable is missing from YAML, it falls back to a safe default.
+    trainer_cfg = TrainerConfig(
+        data_root      = getattr(cfg.dataset, 'data_root', "data/goes19/raw"),
+        stride         = getattr(cfg.dataset, 'stride', 10),
+        target_size    = tuple(getattr(cfg.dataset, 'target_size', [512, 512])),
+        epochs         = getattr(cfg.train, 'epochs', 100) if hasattr(cfg, 'train') else 100,
+        batch_size     = getattr(cfg.train, 'batch_size', 4) if hasattr(cfg, 'train') else 4,
+        lr             = getattr(cfg.optimizer, 'lr', 1e-4) if hasattr(cfg, 'optimizer') else 1e-4,
+        checkpoint_dir = getattr(cfg.paths, 'checkpoint_dir', "models/checkpoints") if hasattr(cfg, 'paths') else "models/checkpoints",
+        log_dir        = getattr(cfg.paths, 'log_dir', "runs/thermal_ifnet") if hasattr(cfg, 'paths') else "runs/thermal_ifnet"
     )
 
-    trainer = Trainer(cfg)
+    trainer = Trainer(trainer_cfg)
     trainer.fit()
     trainer.evaluate()
