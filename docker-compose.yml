@@ -1,0 +1,66 @@
+# docker-compose.yml
+version: "3.9"
+
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: isro-ps12-backend:latest
+    container_name: isro_backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    environment:
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CHECKPOINT_PATH=${CHECKPOINT_PATH:-models/checkpoints/best_model.pth}
+      - DATA_ROOT=${DATA_ROOT:-data/goes19/raw}
+      - BT_MIN=${BT_MIN:-180.0}
+      - BT_MAX=${BT_MAX:-320.0}
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./outputs:/app/outputs
+      - ./configs:/app/configs
+      - ./runs:/app/runs
+    ports:
+      - "8000:8000"
+    networks:
+      - isro_net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: isro-ps12-frontend:latest
+    container_name: isro_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - isro_net
+
+networks:
+  isro_net:
+    driver: bridge
+
+volumes:
+  model_data:
+  goes_data:
+  outputs:
