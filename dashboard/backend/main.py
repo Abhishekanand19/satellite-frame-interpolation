@@ -63,6 +63,21 @@ async def trigger_interpolation(payload: InterpolationRequest):
         "weather_intelligence": intel_metrics
     }
 
+from fastapi.responses import FileResponse
+
+@app.get("/api/visuals/heatmap")
+async def get_heatmap():
+    path = os.path.join(ROOT, "data", "visuals", "residual_heatmap.png")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Heatmap asset not generated yet")
+    return FileResponse(path, media_type="image/png")
+
+@app.get("/api/visuals/vectors")
+async def get_vectors():
+    path = os.path.join(ROOT, "data", "visuals", "motion_vectors.png")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Vector field asset not generated yet")
+    return FileResponse(path, media_type="image/png")
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
