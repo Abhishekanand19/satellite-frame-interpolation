@@ -1,0 +1,16 @@
+# Set this to 'goes' or 'insat' to instantly toggle your base operational tier
+dataset: goes
+
+goes:
+  data_root: "data/goes19/raw"
+  bt_min: 180.0
+  bt_max: 300.0
+  target_size: [256, 256]
+  stride: 1
+
+insat:
+  data_root: "data/insat"
+  bt_min: 180.0
+  bt_max: 300.0
+  target_size: [256, 256]
+  stride: 1
