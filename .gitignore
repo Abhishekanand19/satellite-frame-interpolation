@@ -15,16 +15,18 @@ models/
 runs/
 *.nc
 
-# Secrets & Environment Variables (With Wildcards for Whitespace/Suffixes)
+# Secrets & Environment Variables
 .env
 .env*
 **/.env
 **/.env*
-dashboard/frontend/.env*
-dashboard/frontend/.env**
 
 # Logs
 *.log
 nohup.out
 download_log.txt
 .coverage
+
+# Overarching Output Directory Mask
+outputs/
+outputs/**
