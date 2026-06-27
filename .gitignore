@@ -1,63 +1,30 @@
-# ==========================================
-# 1. HACKATHON DATA & WEIGHST (CRITICAL)
-# ==========================================
-# Block all raw and processed satellite data (.nc, .h5, .hdf5)
-data/
-satellite_frames/
-*.nc
-*.h5
-*.hdf5
-
-# Block model weights, checkpoints, and pretrained models
-models/checkpoints/
-models/pretrained/
-*.pth
-*.pkl
-*.onnx
-*.engine
-
-# Block background download trace outputs
-nohup.out
-
-# ==========================================
-# 2. SECURITY & CREDENTIALS
-# ==========================================
-# Block your private MOSDAC credentials configuration file
-auto/config.json
-download_log.txt
-auto/insat_error_log.txt
-
-# ==========================================
-# 3. PYTHON ENVIRONMENT & BUILD SITES
-# ==========================================
-__pycache__/
-*.py[cod]
-*$py.class
+# System & Environments
 .venv/
 venv/
-ENV/
 env/
-.pytest_cache/
-.ipynb_checkpoints/
+isro_env/
+node_modules/
+**/node_modules/
+dist/
+__pycache__/
+*.pyc
 
-# ==========================================
-# 4. DASHBOARD FRONTEND (REACT)
-# ==========================================
-dashboard/frontend/node_modules/
-dashboard/frontend/build/
-dashboard/frontend/.env.local
-dashboard/frontend/.env.development.local
-dashboard/frontend/.env.test.local
-dashboard/frontend/.env.production.local
+# Data & Models
+data/
+models/
+runs/
+*.nc
 
-# ==========================================
-# 5. OS SPECIFIC TRASH
-# ==========================================
-.DS_Store
-Thumbs.dboutputs/
-runs/
-outputs/
-runs/
-.coverage
+# Secrets & Environment Variables (With Wildcards for Whitespace/Suffixes)
 .env
-dashboard/frontend/.env
+.env*
+**/.env
+**/.env*
+dashboard/frontend/.env*
+dashboard/frontend/.env**
+
+# Logs
+*.log
+nohup.out
+download_log.txt
+.coverage
