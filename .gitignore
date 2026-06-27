@@ -60,3 +60,4 @@ outputs/
 runs/
 .coverage
 .env
+dashboard/frontend/.env
